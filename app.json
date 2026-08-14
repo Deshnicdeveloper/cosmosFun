@@ -4,10 +4,10 @@
     "slug": "cosmos-fun",
     "scheme": "cosmos-fun",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0B0E2E",
+    "backgroundColor": "#070D2B",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.codinghq.cosmosfun",
@@ -18,7 +18,7 @@
     "android": {
       "package": "com.codinghq.cosmosfun",
       "adaptiveIcon": {
-        "backgroundColor": "#0B0E2E",
+        "backgroundColor": "#070D2B",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
@@ -34,7 +34,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0B0E2E",
+          "backgroundColor": "#070D2B",
           "image": "./assets/splash-icon.png",
           "imageWidth": 220
         }

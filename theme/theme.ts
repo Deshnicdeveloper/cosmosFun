@@ -59,15 +59,17 @@ export interface Theme {
 
 export const darkTheme: Theme = {
   colors: {
-    bgGradient: ["#0B0E2E", "#3D1E6D", "#7C3AED"] as const,
-    bgDeep: "#0B0E2E",
+    // Egyptian blue (#1034A6) is the global brand color: deep-space ramp
+    // from near-black navy up to full Egyptian blue.
+    bgGradient: ["#070D2B", "#0C2168", "#1034A6"] as const,
+    bgDeep: "#070D2B",
     surface: "rgba(255,255,255,0.06)",
     surfaceRaised: "rgba(255,255,255,0.10)",
     surfaceBorder: "rgba(255,255,255,0.14)",
     textPrimary: "#F8FAFC",
-    textSecondary: "#C7C9E8",
-    textMuted: "#8B8FC7",
-    accent: "#7C3AED",
+    textSecondary: "#C5CDF0",
+    textMuted: "#8C93CC",
+    accent: "#1034A6",
     correct: "#22C55E",
     correctGlow: "rgba(34,197,94,0.45)",
     skip: "#F59E0B",
