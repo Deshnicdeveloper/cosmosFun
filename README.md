@@ -2,7 +2,20 @@
 
 A "Heads Up!"-style party charades game with a cosmic twist, built with Expo + React Native + TypeScript.
 
-One player holds the phone to their forehead — the word shows on screen facing their friends, who shout clues. **Tilt down** for "Got it!" (+1), **tilt up** to skip, beat the clock. 12 themed decks (including a Cameroon Special 🇨🇲), streaks, confetti, sounds, haptics, and local high scores.
+One player holds the phone to their forehead — the word shows on screen facing their friends, who shout clues. **Tilt down** for "Got it!", **tilt up** to skip, beat the clock. 14 themed decks (including Cameroon Special 🇨🇲, Pidgin, and French), streaks, confetti, sounds, haptics, and local high scores.
+
+## Game modes & features
+
+- **Quick Play** — classic solo rounds with any deck
+- **Team Battle** — 2–6 teams take turns (1–3 rounds each), live standings between rounds, victory podium with confetti
+- **Daily Challenge** — everyone gets the *same* seeded 20 words each day; per-day leaderboard
+- **Cosmic Events** — random round modifiers: Supernova (2× points), Meteor Shower (45s, +3s per correct), Golden Rush, Frozen Comet (skips freeze 3s), Deep Space Silence (mime-only clues)
+- **Golden words** (~1 in 12) worth 3 points, with sparkle sound and gold styling
+- **Streak time bonus** — +2s at every 5-streak; **Buzzer Beater** badge for a correct in the final 3s
+- **Custom decks** — build decks from your own words in-app (they join Mix All too)
+- **Stats** — lifetime words guessed, best streak ever, golden words found, time played…
+- **Share cards** — the recap captures a score card image for the share sheet
+- Skip-freeze house rule (Settings), mascot commentary during rounds, last-5s red pulse
 
 ## Run it
 

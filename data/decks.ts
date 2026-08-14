@@ -228,6 +228,40 @@ export const decks: Deck[] = [
     ],
   },
   {
+    id: "pidgin",
+    name: "Pidgin Special",
+    icon: "chatbubbles",
+    accentColor: "#4ADE80",
+    // Cameroon Pidgin — everyday words & expressions. Act them out!
+    words: [
+      e("chop"), e("waka"), e("mimbo"), e("tori"),
+      m("wahala"), m("ashia"), m("njoh"), m("sabi"), m("nyanga"),
+      m("kongossa"), m("palava"), m("massa"), m("mola"), m("bolo"),
+      m("nayo nayo"), m("ndolo"), m("mbeng"), m("achouka"), m("yamo"),
+      m("mbutuku"), m("sango"), m("repe"), m("reme"), m("ndoss"),
+      m("How for do"), m("I di go"), m("small small"),
+      h("man no run"), h("God dey"), h("na so"), h("dash me"),
+      h("half book"),
+    ],
+  },
+  {
+    id: "francais",
+    name: "En Français",
+    icon: "language",
+    accentColor: "#F472B6",
+    // French words to act out — perfect for bilingual game nights.
+    words: [
+      e("manger"), e("dormir"), e("danser"), e("chanter"), e("chien"),
+      e("chat"), e("voiture"), e("maison"), e("football"), e("téléphone"),
+      e("pleurer"), e("rire"),
+      m("médecin"), m("professeur"), m("marché"), m("mariage"), m("police"),
+      m("avion"), m("église"), m("argent"), m("fatigué"), m("fâché"),
+      m("amour"), m("peur"), m("faim"), m("boire"), m("courir"), m("nager"),
+      h("embouteillage"), h("déménagement"), h("anniversaire"),
+      h("bibliothèque"), h("parapluie"), h("réveil"),
+    ],
+  },
+  {
     id: "tech-companies",
     name: "Tech Companies & Apps",
     icon: "logo-github",

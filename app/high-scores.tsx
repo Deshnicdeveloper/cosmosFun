@@ -8,7 +8,7 @@ import { PoppinsText } from "../components/PoppinsText";
 import { CosmicButton } from "../components/CosmicButton";
 import { Mascot } from "../components/Mascot";
 import { useGame } from "../context/GameContext";
-import { decks, getDeckById, MIX_ALL_ID } from "../data/decks";
+import { decks, MIX_ALL_ID } from "../data/decks";
 import { theme } from "../theme/theme";
 
 function formatDate(iso: string): string {
@@ -21,27 +21,36 @@ function formatDate(iso: string): string {
   });
 }
 
-function deckLabel(deckId: string): string {
-  if (deckId === MIX_ALL_ID) return "Mix All";
-  return getDeckById(deckId)?.name ?? deckId;
-}
-
-function deckAccent(deckId: string): string {
-  if (deckId === MIX_ALL_ID) return theme.colors.accent;
-  return getDeckById(deckId)?.accentColor ?? theme.colors.accent;
-}
-
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 export default function HighScoresScreen() {
   const router = useRouter();
-  const { highScores } = useGame();
+  const { highScores, resolveDeckMeta } = useGame();
 
-  // Deck tabs: only decks that actually have scores, Mix All first.
+  // Daily buckets look like "daily:2026-08-14" — label them with the date.
+  const deckLabel = (deckId: string): string => {
+    if (deckId.startsWith("daily:")) return `Daily ${deckId.slice("daily:".length)}`;
+    return resolveDeckMeta(deckId).name;
+  };
+
+  const deckAccent = (deckId: string): string => {
+    if (deckId.startsWith("daily:")) return "#FACC15";
+    return resolveDeckMeta(deckId).accentColor;
+  };
+
+  // Deck tabs: only decks that actually have scores; Mix All first, then
+  // built-ins, then customs/dailies (newest daily first).
   const scoredDeckIds = useMemo(() => {
     const ids = Object.keys(highScores).filter((id) => (highScores[id] ?? []).length > 0);
     const order = [MIX_ALL_ID, ...decks.map((d) => d.id)];
-    return ids.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    return ids.sort((a, b) => {
+      const ia = order.indexOf(a);
+      const ib = order.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return b.localeCompare(a); // dailies newest-first
+    });
   }, [highScores]);
 
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);

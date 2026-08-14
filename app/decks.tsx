@@ -8,8 +8,8 @@ import { ScreenBackground } from "../components/ScreenBackground";
 import { PoppinsText } from "../components/PoppinsText";
 import { CosmicButton } from "../components/CosmicButton";
 import { DeckCard } from "../components/DeckCard";
-import { decks, Difficulty, MIX_ALL_ID, getWordsFor, shuffle } from "../data/decks";
-import { useGame } from "../context/GameContext";
+import { decks, Deck, Difficulty, MIX_ALL_ID, shuffle } from "../data/decks";
+import { getPlayableWords, useGame } from "../context/GameContext";
 import { useHaptics } from "../hooks/useHaptics";
 import { theme } from "../theme/theme";
 
@@ -20,16 +20,26 @@ const DIFFICULTIES: Array<{ key: Difficulty | "all"; label: string }> = [
   { key: "hard", label: "Hard" },
 ];
 
+type GridItem = { kind: "deck"; deck: Deck; custom: boolean } | { kind: "create" };
+
 export default function DeckSelect() {
   const router = useRouter();
-  const { selectedDeckId, setSelectedDeckId, difficulty, setDifficulty } = useGame();
+  const {
+    selectedDeckId,
+    setSelectedDeckId,
+    difficulty,
+    setDifficulty,
+    customDecks,
+    gameMode,
+    teams,
+    currentTeamIndex,
+  } = useGame();
   const haptics = useHaptics();
 
   // Deck display order — shuffled by the shake easter egg.
   const [order, setOrder] = useState(() => decks.map((d) => d.id));
 
-  // Shake-to-shuffle easter egg: a strong shake reshuffles the grid with a
-  // springy layout animation.
+  // Shake-to-shuffle easter egg.
   const lastShakeRef = useRef(0);
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -53,12 +63,20 @@ export default function DeckSelect() {
     return () => sub?.remove();
   }, []);
 
-  const orderedDecks = order
+  const orderedBuiltins = order
     .map((id) => decks.find((d) => d.id === id))
-    .filter((d): d is (typeof decks)[number] => d != null);
+    .filter((d): d is Deck => d != null);
 
-  const selectedWordCount = getWordsFor(selectedDeckId, difficulty).length;
+  const gridItems: GridItem[] = [
+    ...customDecks.map((deck) => ({ kind: "deck" as const, deck, custom: true })),
+    { kind: "create" as const },
+    ...orderedBuiltins.map((deck) => ({ kind: "deck" as const, deck, custom: false })),
+  ];
+
+  const selectedWordCount = getPlayableWords(selectedDeckId, difficulty, customDecks).length;
   const canPlay = selectedWordCount >= 5;
+
+  const activeTeam = gameMode === "teams" ? teams[currentTeamIndex] : null;
 
   return (
     <ScreenBackground>
@@ -72,6 +90,15 @@ export default function DeckSelect() {
           </PoppinsText>
           <View style={{ width: 26 }} />
         </View>
+
+        {activeTeam && (
+          <View style={[styles.teamBanner, { borderColor: activeTeam.color }]}>
+            <View style={[styles.teamDot, { backgroundColor: activeTeam.color }]} />
+            <PoppinsText weight="semibold" size={theme.fontSize.sm}>
+              Team {activeTeam.name} picks the deck!
+            </PoppinsText>
+          </View>
+        )}
 
         {/* Difficulty filter */}
         <View style={styles.filterRow}>
@@ -107,8 +134,8 @@ export default function DeckSelect() {
         </PoppinsText>
 
         <FlatList
-          data={orderedDecks}
-          keyExtractor={(d) => d.id}
+          data={gridItems}
+          keyExtractor={(item) => (item.kind === "create" ? "create" : item.deck.id)}
           numColumns={2}
           columnWrapperStyle={styles.column}
           contentContainerStyle={styles.grid}
@@ -119,7 +146,7 @@ export default function DeckSelect() {
                 name="Mix All"
                 icon="planet"
                 accentColor={theme.colors.accent}
-                wordCount={getWordsFor(MIX_ALL_ID, difficulty).length}
+                wordCount={getPlayableWords(MIX_ALL_ID, difficulty, customDecks).length}
                 selected={selectedDeckId === MIX_ALL_ID}
                 onPress={() => {
                   haptics.tap();
@@ -128,39 +155,65 @@ export default function DeckSelect() {
               />
             </Animated.View>
           }
-          renderItem={({ item }) => (
-            <Animated.View
-              entering={FadeIn}
-              layout={LinearTransition.springify()}
-              style={styles.cell}
-            >
-              <DeckCard
-                name={item.name}
-                icon={item.icon}
-                accentColor={item.accentColor}
-                wordCount={
-                  difficulty === "all"
-                    ? item.words.length
-                    : item.words.filter((w) => w.difficulty === difficulty).length
-                }
-                selected={selectedDeckId === item.id}
-                onPress={() => {
-                  haptics.tap();
-                  setSelectedDeckId(item.id);
-                }}
-              />
-            </Animated.View>
-          )}
+          renderItem={({ item }) => {
+            if (item.kind === "create") {
+              return (
+                <Animated.View entering={FadeIn} layout={LinearTransition.springify()} style={styles.cell}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push("/custom-deck")}
+                    style={styles.createCard}
+                  >
+                    <View style={styles.createIcon}>
+                      <Ionicons name="add" size={28} color={theme.colors.textSecondary} />
+                    </View>
+                    <PoppinsText weight="semibold" size={theme.fontSize.sm} align="center">
+                      Create Deck
+                    </PoppinsText>
+                    <PoppinsText weight="medium" size={theme.fontSize.xs} color={theme.colors.textMuted}>
+                      your own words!
+                    </PoppinsText>
+                  </Pressable>
+                </Animated.View>
+              );
+            }
+            const { deck, custom } = item;
+            return (
+              <Animated.View entering={FadeIn} layout={LinearTransition.springify()} style={styles.cell}>
+                <DeckCard
+                  name={deck.name}
+                  icon={deck.icon}
+                  accentColor={deck.accentColor}
+                  wordCount={
+                    difficulty === "all"
+                      ? deck.words.length
+                      : deck.words.filter((w) => w.difficulty === difficulty).length
+                  }
+                  selected={selectedDeckId === deck.id}
+                  onPress={() => {
+                    haptics.tap();
+                    setSelectedDeckId(deck.id);
+                  }}
+                />
+                {custom && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit ${deck.name}`}
+                    onPress={() => router.push({ pathname: "/custom-deck", params: { editId: deck.id } })}
+                    style={styles.editBadge}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="pencil" size={14} color={theme.colors.textPrimary} />
+                  </Pressable>
+                )}
+              </Animated.View>
+            );
+          }}
         />
 
         <View style={styles.footer}>
           {!canPlay && (
-            <PoppinsText
-              weight="medium"
-              size={theme.fontSize.sm}
-              color={theme.colors.skip}
-              align="center"
-            >
+            <PoppinsText weight="medium" size={theme.fontSize.sm} color={theme.colors.skip} align="center">
               Not enough words at this difficulty — try another filter.
             </PoppinsText>
           )}
@@ -185,6 +238,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: theme.spacing.md,
   },
+  teamBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: theme.spacing.sm,
+    paddingVertical: 8,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1.5,
+    backgroundColor: theme.colors.surface,
+    marginBottom: theme.spacing.sm,
+  },
+  teamDot: { width: 12, height: 12, borderRadius: 6 },
   filterRow: {
     flexDirection: "row",
     gap: theme.spacing.sm,
@@ -208,5 +273,37 @@ const styles = StyleSheet.create({
   column: { gap: theme.spacing.md },
   mixAll: { marginBottom: theme.spacing.md },
   cell: { flex: 1 },
+  createCard: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    minHeight: 128,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: theme.colors.surfaceBorder,
+    backgroundColor: "transparent",
+  },
+  createIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.surfaceRaised,
+  },
+  editBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.surfaceRaised,
+  },
   footer: { gap: theme.spacing.sm, paddingTop: theme.spacing.sm },
 });
