@@ -40,12 +40,15 @@ export default function Game() {
   const accent = deck?.accentColor ?? theme.colors.accent;
 
   // Shuffled word queue, prepared once per round.
-  const words = useMemo(
+  // Correct → word leaves the queue. Skip → word goes to the BACK of the
+  // queue and comes around again. Empty queue = whole deck guessed → the
+  // round ends early, even with time still on the clock.
+  const initialWords = useMemo(
     () => shuffle(getWordsFor(selectedDeckId, difficulty)),
     [selectedDeckId, difficulty]
   );
-
-  const [index, setIndex] = useState(0);
+  const [queue, setQueue] = useState(initialWords);
+  const [turn, setTurn] = useState(0); // total actions taken (remount key for word text)
   const [score, setScore] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(settings.roundDuration);
   const [streak, setStreak] = useState(0);
@@ -54,6 +57,7 @@ export default function Game() {
   const resultsRef = useRef<WordResult[]>([]);
   const bestStreakRef = useRef(0);
   const endedRef = useRef(false);
+  const skippedEverRef = useRef(false); // any skip disqualifies a "perfect" round
 
   // Gameplay is landscape (like classic Heads Up). Restore portrait on exit.
   useEffect(() => {
@@ -66,7 +70,7 @@ export default function Game() {
 
   // ----- word advance -----
 
-  const currentWord = words.length > 0 ? words[index % words.length] : null;
+  const currentWord = queue.length > 0 ? queue[0] : null;
 
   const flashColor = useSharedValue<"none" | "correct" | "skip">("none");
   const flashOpacity = useSharedValue(0);
@@ -82,13 +86,47 @@ export default function Game() {
     [flashColor, flashOpacity]
   );
 
+  /**
+   * Ends the round exactly once, from either path:
+   * - timedOut: the clock hit zero with words remaining
+   * - !timedOut: the player cleared the entire deck early
+   */
+  const endRound = useCallback(
+    (timedOut: boolean) => {
+      if (endedRef.current) return;
+      endedRef.current = true;
+      if (timedOut) {
+        haptics.timeout();
+        play("timeout");
+      }
+      // Deck cleared: the final word's "ding" just played — the recap screen
+      // handles the confetti + cheer celebration.
+      const results = resultsRef.current;
+      finishRound({
+        deckId: selectedDeckId,
+        deckName,
+        results,
+        score: results.filter((r) => r.correct).length,
+        bestStreak: bestStreakRef.current,
+        duration: settings.roundDuration,
+        // Perfect = every word correct in one pass, zero skips.
+        perfect: results.length > 0 && !skippedEverRef.current && !timedOut,
+        cleared: !timedOut,
+      });
+      router.replace("/recap");
+    },
+    [deckName, selectedDeckId, settings.roundDuration, finishRound, haptics, play, router]
+  );
+
   const handleAction = useCallback(
     (correct: boolean) => {
       if (endedRef.current || !currentWord) return;
 
       resultsRef.current.push({ term: currentWord.term, correct });
 
+      let nextQueue: typeof queue;
       if (correct) {
+        nextQueue = queue.slice(1); // word retired
         setScore((s) => s + 1);
         setStreak((s) => {
           const next = s + 1;
@@ -101,15 +139,24 @@ export default function Game() {
         haptics.correct();
         play("correct");
       } else {
+        skippedEverRef.current = true;
+        nextQueue = [...queue.slice(1), currentWord]; // back of the queue
         setStreak(0);
         setStreakLabel(null);
         triggerFlash("skip");
         haptics.skip();
         play("skip");
       }
-      setIndex((i) => i + 1);
+
+      setQueue(nextQueue);
+      setTurn((t) => t + 1);
+
+      if (nextQueue.length === 0) {
+        // Every word guessed — stop now, don't wait for the clock.
+        endRound(false);
+      }
     },
-    [currentWord, triggerFlash, haptics, play]
+    [currentWord, queue, triggerFlash, haptics, play, endRound]
   );
 
   // ----- tilt detection (manual buttons always remain available) -----
@@ -136,35 +183,12 @@ export default function Game() {
   useEffect(() => {
     if (endedRef.current) return;
     if (secondsLeft <= 0) {
-      endedRef.current = true;
-      haptics.timeout();
-      play("timeout");
-      const results = resultsRef.current;
-      const correctCount = results.filter((r) => r.correct).length;
-      finishRound({
-        deckId: selectedDeckId,
-        deckName,
-        results,
-        score: correctCount,
-        bestStreak: bestStreakRef.current,
-        duration: settings.roundDuration,
-        perfect: results.length > 0 && results.every((r) => r.correct),
-      });
-      router.replace("/recap");
+      endRound(true);
     } else if (secondsLeft <= 5) {
       play("countdown");
       haptics.warning();
     }
-  }, [
-    secondsLeft,
-    deckName,
-    selectedDeckId,
-    settings.roundDuration,
-    finishRound,
-    haptics,
-    play,
-    router,
-  ]);
+  }, [secondsLeft, endRound, haptics, play]);
 
   // Clear streak label after a moment.
   useEffect(() => {
@@ -235,7 +259,7 @@ export default function Game() {
         {/* The word */}
         <View style={styles.wordArea}>
           <PoppinsText
-            key={index} // remount per word so font auto-scaling resets
+            key={turn} // remount per word so font auto-scaling resets
             weight="black"
             size={110}
             align="center"
