@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Switch, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Switch, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as ScreenOrientation from "expo-screen-orientation";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -43,6 +44,11 @@ export default function PreGame() {
 
   const startCountdown = () => {
     haptics.tap();
+    // Rotate into landscape now, so the player is already holding the phone
+    // sideways when the round begins.
+    if (Platform.OS !== "web") {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
+    }
     setCountdown(3);
     play("countdown");
     let n = 3;

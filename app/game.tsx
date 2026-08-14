@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as ScreenOrientation from "expo-screen-orientation";
 import Animated, {
   Easing,
   FadeIn,
@@ -53,6 +54,15 @@ export default function Game() {
   const resultsRef = useRef<WordResult[]>([]);
   const bestStreakRef = useRef(0);
   const endedRef = useRef(false);
+
+  // Gameplay is landscape (like classic Heads Up). Restore portrait on exit.
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
+    return () => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+    };
+  }, []);
 
   // ----- word advance -----
 
@@ -189,9 +199,9 @@ export default function Game() {
             </PoppinsText>
             <TiltIndicator tiltState={tiltState} active={tiltActive} />
           </View>
-          <TimerRing secondsLeft={secondsLeft} totalSeconds={settings.roundDuration} />
+          <TimerRing secondsLeft={secondsLeft} totalSeconds={settings.roundDuration} size={64} />
           <View style={styles.scoreBox}>
-            <PoppinsText weight="black" size={theme.fontSize.xxl} color={theme.colors.correct}>
+            <PoppinsText weight="black" size={theme.fontSize.xl} color={theme.colors.correct}>
               {score}
             </PoppinsText>
             <PoppinsText weight="medium" size={theme.fontSize.xs} color={theme.colors.textMuted}>
@@ -227,10 +237,11 @@ export default function Game() {
           <PoppinsText
             key={index} // remount per word so font auto-scaling resets
             weight="black"
-            size={theme.fontSize.giant}
+            size={110}
             align="center"
             adjustsFontSizeToFit
-            numberOfLines={3}
+            numberOfLines={2}
+            minimumFontScale={0.3}
             style={styles.word}
           >
             {currentWord?.term ?? "No words!"}
@@ -276,7 +287,7 @@ const styles = StyleSheet.create({
   },
   topLeft: { gap: 6, alignItems: "flex-start", width: 110 },
   scoreBox: { alignItems: "center", width: 110 },
-  streakSlot: { height: 44, alignItems: "center", justifyContent: "center" },
+  streakSlot: { height: 34, alignItems: "center", justifyContent: "center" },
   wordArea: { flex: 1, alignItems: "center", justifyContent: "center" },
   word: { paddingHorizontal: theme.spacing.sm },
   controls: {
@@ -289,7 +300,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: theme.spacing.sm,
-    paddingVertical: 18,
+    paddingVertical: 12,
     borderRadius: theme.radius.lg,
     borderWidth: 1.5,
   },

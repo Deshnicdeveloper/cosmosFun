@@ -15,18 +15,29 @@ interface Options {
 }
 
 /**
- * Tilt detection for "phone on forehead" play, via DeviceMotion.
+ * Sign normalization for accelerationIncludingGravity.z so that
+ * "+1 g along z" always means "screen facing the ceiling":
+ * - iOS (CoreMotion): flat screen-up reports z ≈ -9.81
+ * - Android: flat screen-up reports z ≈ +9.81
+ */
+const GRAVITY_SIGN = Platform.OS === "ios" ? -1 : 1;
+
+/**
+ * Tilt detection for "phone on forehead" play.
  *
- * The phone is held upright (portrait) against the forehead, screen facing
- * the guessers. We derive the pitch angle from `rotation.beta` (rotation
- * around the device x-axis, radians):
- *   - upright ≈ 90°
- *   - tilt down (screen toward floor)  → angle shrinks toward 0°
- *   - tilt up (screen toward ceiling)  → angle grows toward 180°
+ * Uses the GRAVITY VECTOR, not Euler angles: rotation.beta suffers a gimbal
+ * flip near vertical (tilting up past vertical makes beta shrink again, which
+ * made tilt-up register as "correct"). Gravity has no such ambiguity and is
+ * orientation-independent (works in portrait AND landscape).
+ *
+ * Geometry: the phone is held vertically against the forehead, screen facing
+ * the guessers → gravity is perpendicular to the screen normal (tilt ≈ 0°).
+ *   - Tilt DOWN (screen toward floor)  → gravity gains a -z component
+ *   - Tilt UP   (screen toward ceiling) → gravity gains a +z component
+ * tiltDeg = asin(g_z / |g|):  negative = down, positive = up.
  *
  * Debounce contract: after firing "down" or "up", the device must return to
- * the neutral band before another event can fire — a single tilt gesture
- * produces exactly one event.
+ * the neutral band before another event can fire — one gesture, one event.
  */
 export function useTiltDetection({ onTilt, sensitivity = 0.5, enabled = true }: Options = {}) {
   const [tiltState, setTiltState] = useState<TiltState>("neutral");
@@ -40,11 +51,11 @@ export function useTiltDetection({ onTilt, sensitivity = 0.5, enabled = true }: 
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
 
-  // Sensitivity 0..1 → trigger offset from vertical: 50° (hard) … 25° (easy).
+  // Sensitivity 0..1 → trigger angle from vertical: 50° (hard) … 25° (easy).
   const clamped = Math.min(1, Math.max(0, sensitivity));
-  const triggerOffset = 50 - clamped * 25;
-  const offsetRef = useRef(triggerOffset);
-  offsetRef.current = triggerOffset;
+  const triggerAngle = 50 - clamped * 25;
+  const angleRef = useRef(triggerAngle);
+  angleRef.current = triggerAngle;
 
   const requestPermission = useCallback(async (): Promise<TiltPermission> => {
     if (Platform.OS === "web") {
@@ -72,29 +83,31 @@ export function useTiltDetection({ onTilt, sensitivity = 0.5, enabled = true }: 
 
     DeviceMotion.setUpdateInterval(80);
     const sub = DeviceMotion.addListener((m: DeviceMotionMeasurement) => {
-      const beta = m.rotation?.beta;
-      if (beta == null) return;
+      const g = m.accelerationIncludingGravity;
+      if (!g || g.x == null || g.y == null || g.z == null) return;
 
-      const pitchDeg = (beta * 180) / Math.PI; // upright ≈ 90
-      const offset = offsetRef.current;
-      const downThreshold = 90 - offset;
-      const upThreshold = 90 + offset;
-      // Neutral band is deliberately narrower than the trigger band so the
-      // gesture has hysteresis (no rapid-fire at the boundary).
-      const neutralLow = 90 - offset * 0.55;
-      const neutralHigh = 90 + offset * 0.55;
+      const magnitude = Math.sqrt(g.x * g.x + g.y * g.y + g.z * g.z);
+      // Ignore junk samples (free-fall / sensor warm-up) — gravity should
+      // dominate; violent shakes briefly distort it but settle within a tick.
+      if (magnitude < 4) return;
+
+      const zRatio = Math.max(-1, Math.min(1, (GRAVITY_SIGN * g.z) / magnitude));
+      const tiltDeg = (Math.asin(zRatio) * 180) / Math.PI; // + up / - down
+
+      const trigger = angleRef.current;
+      const rearm = trigger * 0.5; // hysteresis: must come well back to vertical
 
       if (armedRef.current) {
-        if (pitchDeg < downThreshold) {
+        if (tiltDeg < -trigger) {
           armedRef.current = false;
           setTiltState("down");
           if (enabledRef.current) onTiltRef.current?.("down");
-        } else if (pitchDeg > upThreshold) {
+        } else if (tiltDeg > trigger) {
           armedRef.current = false;
           setTiltState("up");
           if (enabledRef.current) onTiltRef.current?.("up");
         }
-      } else if (pitchDeg > neutralLow && pitchDeg < neutralHigh) {
+      } else if (Math.abs(tiltDeg) < rearm) {
         armedRef.current = true;
         setTiltState("neutral");
       }
