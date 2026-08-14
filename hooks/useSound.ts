@@ -17,6 +17,10 @@ const SOURCES = {
   countdown: require("../assets/sounds/countdown.wav"),
   timeout: require("../assets/sounds/timeout.wav"),
   cheer: require("../assets/sounds/cheer.wav"),
+  go: require("../assets/sounds/go.wav"),
+  golden: require("../assets/sounds/golden.wav"),
+  freeze: require("../assets/sounds/freeze.wav"),
+  bonus: require("../assets/sounds/bonus.wav"),
 } as const;
 
 export type SoundName = keyof typeof SOURCES;

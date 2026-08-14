@@ -81,6 +81,23 @@ export default function Settings() {
               thumbColor={theme.colors.textPrimary}
             />
           </View>
+          <View style={styles.row}>
+            <View style={styles.rowLabel}>
+              <Ionicons name="snow" size={20} color={theme.colors.textSecondary} />
+              <View>
+                <PoppinsText weight="medium">Skip freeze penalty</PoppinsText>
+                <PoppinsText size={theme.fontSize.xs} color={theme.colors.textMuted}>
+                  skipping freezes the game for 2s
+                </PoppinsText>
+              </View>
+            </View>
+            <Switch
+              value={settings.skipFreeze}
+              onValueChange={(v) => updateSettings({ skipFreeze: v })}
+              trackColor={{ true: theme.colors.accent, false: theme.colors.surfaceRaised }}
+              thumbColor={theme.colors.textPrimary}
+            />
+          </View>
         </View>
 
         {/* Default round length */}
