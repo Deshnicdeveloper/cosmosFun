@@ -104,7 +104,11 @@ export function TimerRing({ secondsLeft, totalSeconds, size = 84 }: TimerRingPro
 
 const styles = StyleSheet.create({
   label: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: "center",
     justifyContent: "center",
   },
