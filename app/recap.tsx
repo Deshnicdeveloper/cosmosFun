@@ -70,9 +70,11 @@ export default function Recap() {
           <PoppinsText weight="black" size={theme.fontSize.xxl}>
             {lastRound.perfect
               ? "Perfect Round!"
-              : isNewBest
-                ? "New High Score!"
-                : "Time's Up!"}
+              : lastRound.cleared
+                ? "Deck Cleared!"
+                : isNewBest
+                  ? "New High Score!"
+                  : "Time's Up!"}
           </PoppinsText>
           <PoppinsText weight="medium" color={theme.colors.textSecondary}>
             {lastRound.deckName} · {lastRound.duration}s

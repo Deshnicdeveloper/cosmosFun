@@ -33,8 +33,10 @@ export interface RoundResult {
   score: number;
   bestStreak: number;
   duration: number;
-  /** true when every shown word was guessed correctly (≥1 word, no skips). */
+  /** true when every word was guessed correctly in one pass (≥1 word, no skips). */
   perfect: boolean;
+  /** true when the whole deck was cleared before the clock ran out. */
+  cleared: boolean;
 }
 
 export interface HighScoreEntry {
